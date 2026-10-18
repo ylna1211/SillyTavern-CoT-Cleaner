@@ -1,0 +1,36 @@
+<div class="cot-cleaner-settings">
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <b>CoT Cleaner</b>
+      <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content">
+      <label class="checkbox_label" for="cotc-enabled">
+        <input type="checkbox" id="cotc-enabled" />
+        <span>启用 CoT Cleaner</span>
+      </label>
+
+      <label class="checkbox_label" for="cotc-hide-mode">
+        <input type="checkbox" id="cotc-hide-mode" />
+        <span>模式 A：在 UI 中折叠思维（不删除）</span>
+      </label>
+
+      <label class="checkbox_label" for="cotc-strip-mode">
+        <input type="checkbox" id="cotc-strip-mode" />
+        <span>模式 B：从正文中移除思维段落</span>
+      </label>
+
+      <label for="cotc-max-lines">检测上限行数（仅影响隐藏判断）</label>
+      <input type="number" id="cotc-max-lines" min="1" max="200" value="60" />
+
+      <label for="cotc-keywords">思维起始关键字（逗号分隔，支持正则）</label>
+      <input type="text" id="cotc-keywords"
+             value="thinking,thought,thoughts,思维,思考,分析,内部推理,reasoning,chain of thought" />
+
+      <div class="cotc-hint">
+        提示：若 AI 输出为「无标记纯文字思维」，请开启模式 A 或 B。
+        两者皆开时，先剥离、后折叠。
+      </div>
+    </div>
+  </div>
+</div>
