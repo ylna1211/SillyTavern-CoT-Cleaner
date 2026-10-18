@@ -1,0 +1,41 @@
+.cotc-fold {
+  border: 1px dashed rgba(150, 150, 150, 0.5);
+  border-radius: 6px;
+  margin: 6px 0;
+  background: rgba(120, 120, 120, 0.06);
+  overflow: hidden;
+}
+
+.cotc-fold-header {
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 0.9em;
+  color: #aaa;
+  user-select: none;
+}
+
+.cotc-fold-header:hover {
+  background: rgba(120, 120, 120, 0.12);
+}
+
+.cotc-fold-body {
+  display: none;
+  margin: 0;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.85em;
+  color: #999;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.cotc-fold.expanded .cotc-fold-body {
+  display: block;
+}
+
+.cotc-hint {
+  font-size: 0.8em;
+  color: #888;
+  margin-top: 6px;
+}
