@@ -1,22 +1,23 @@
 // SillyTavern-CoT-Cleaner
-// 版本 1.0.0
+// 版本 1.1.0 (新增隱藏 Contact 前的文字)
 
 const MODULE_NAME = 'st-coat-cleaner';
-const extensionName = 'SillyTavern-CoT-Cleaner';
+const extensionName = 'SillyTavern-CoT-Cleaner'; // 如果你改了倉庫名，這裡也要跟著改！
 
-// ---- 默认设置 ----
+// ---- 預設設定 ----
 const defaultSettings = {
   enabled: true,
-  hideMode: true,     // 模式 A：UI 折叠
-  stripMode: false,   // 模式 B：剥离正文
+  hideMode: true,       // 模式 A：UI 折疊
+  stripMode: false,     // 模式 B：剝離正文
+  stripBeforeContact: true, // 🆕 隱藏 Contact: 之前的文字
   maxLines: 60,
-  keywordsRaw: 'thinking,thought,thoughts,思维,思考,分析,内部推理,reasoning,chain of thought',
+  keywordsRaw: 'thinking,thought,thoughts,思維,思考,分析,內部推理,reasoning,chain of thought',
 };
 
 let settings = { ...defaultSettings };
 let keywords = [];
 
-// ---- 工具：解析关键字 ----
+// ---- 工具：解析關鍵字 ----
 function compileKeywords(raw) {
   return raw
     .split(',')
@@ -28,8 +29,7 @@ function compileKeywords(raw) {
     });
 }
 
-// ---- 核心：检测无标记思维链 ----
-// 返回 { hasCoT, before, cot, after }
+// ---- 核心：偵測無標記思維鏈 ----
 function detectCoT(text) {
   if (!text || typeof text !== 'string') {
     return { hasCoT: false, before: '', cot: '', after: text || '' };
@@ -37,7 +37,6 @@ function detectCoT(text) {
 
   const lines = text.split('\n');
 
-  // 找「思维起始」：第一个非空行命中任一关键字
   let startIdx = -1;
   for (let i = 0; i < Math.min(lines.length, settings.maxLines); i++) {
     const line = lines[i].trim();
@@ -52,16 +51,15 @@ function detectCoT(text) {
     return { hasCoT: false, before: '', cot: '', after: text };
   }
 
-  // 找结束标记
   let endIdx = -1;
   const endMarkers = [
     /^-{3,}$/,
     /^={3,}$/,
     /^Answer\s*[:：]/i,
     /^回答\s*[:：]/,
-    /^最终回复\s*[:：]/,
+    /^最終回覆\s*[:：]/,
     /^Final\s*Answer\s*[:：]/i,
-    /^结论\s*[:：]/,
+    /^結論\s*[:：]/,
   ];
 
   for (let i = startIdx + 1; i < lines.length; i++) {
@@ -72,7 +70,6 @@ function detectCoT(text) {
     }
   }
 
-  // 若无结束标记，用「连续两空行」作为分界
   if (endIdx === -1) {
     let blankCount = 0;
     for (let i = startIdx + 1; i < lines.length; i++) {
@@ -102,7 +99,7 @@ function detectCoT(text) {
   };
 }
 
-// ---- 处理单一消息 DOM 节点 ----
+// ---- 處理單一訊息 DOM 節點 ----
 function processMessageNode(node) {
   if (!settings.enabled) return;
   if (node.dataset.cotcProcessed === '1') return;
@@ -111,11 +108,27 @@ function processMessageNode(node) {
   const mesText = node.querySelector('.mes_text');
   if (!mesText) return;
 
-  const raw = mesText.innerText || '';
+  let raw = mesText.innerText || '';
+
+  // 🆕 優先處理：隱藏 Contact: 之前的文字
+  if (settings.stripBeforeContact) {
+    // 尋找 Contact: 或 Contact： 的位置（忽略大小寫）
+    const contactMatch = raw.match(/Contact\s*[:：]/i);
+    if (contactMatch) {
+      const contactIndex = contactMatch.index;
+      // 只保留 Contact: 及其之後的文字
+      raw = raw.substring(contactIndex);
+      // 立即更新畫面上的文字
+      mesText.innerText = raw;
+      // 因為已經截斷了，後續的思維鏈判斷可以繼續執行
+    }
+  }
+
+  // 繼續執行原有的思維鏈偵測
   const result = detectCoT(raw);
   if (!result.hasCoT) return;
 
-  // 模式 B：剥离
+  // 模式 B：剝離
   if (settings.stripMode) {
     const cleaned = [result.before, result.after].filter(Boolean).join('\n').trim();
     mesText.innerText = cleaned;
@@ -123,14 +136,14 @@ function processMessageNode(node) {
     return;
   }
 
-  // 模式 A：折叠
+  // 模式 A：折疊
   if (settings.hideMode) {
     const wrapper = document.createElement('div');
     wrapper.className = 'cotc-fold';
 
     const header = document.createElement('div');
     header.className = 'cotc-fold-header';
-    header.textContent = '🧠 思维链（点击展开）';
+    header.textContent = '🧠 思維鏈（點擊展開）';
 
     const body = document.createElement('pre');
     body.className = 'cotc-fold-body';
@@ -160,7 +173,6 @@ function processMessageNode(node) {
   }
 }
 
-// ---- 扫描现有消息 ----
 function scanAllMessages() {
   document.querySelectorAll('.mes').forEach(node => {
     if (node.dataset.cotcStripped === '1') return;
@@ -168,7 +180,6 @@ function scanAllMessages() {
   });
 }
 
-// ---- 重置标记 ----
 function resetMarks() {
   document.querySelectorAll('.mes').forEach(node => {
     delete node.dataset.cotcProcessed;
@@ -184,12 +195,12 @@ function resetMarks() {
   });
 }
 
-// ---- 绑定设置 UI ----
 function bindSettings() {
   const ui = {
     enabled: document.getElementById('cotc-enabled'),
     hideMode: document.getElementById('cotc-hide-mode'),
     stripMode: document.getElementById('cotc-strip-mode'),
+    stripBeforeContact: document.getElementById('cotc-strip-before-contact'), // 🆕
     maxLines: document.getElementById('cotc-max-lines'),
     keywords: document.getElementById('cotc-keywords'),
   };
@@ -199,6 +210,7 @@ function bindSettings() {
     settings.enabled = ui.enabled.checked;
     settings.hideMode = ui.hideMode.checked;
     settings.stripMode = ui.stripMode.checked;
+    settings.stripBeforeContact = ui.stripBeforeContact.checked; // 🆕
     settings.maxLines = Math.max(1, parseInt(ui.maxLines.value, 10) || 60);
     settings.keywordsRaw = ui.keywords.value;
     keywords = compileKeywords(settings.keywordsRaw);
@@ -210,11 +222,11 @@ function bindSettings() {
   ui.enabled.addEventListener('change', () => apply());
   ui.hideMode.addEventListener('change', () => apply());
   ui.stripMode.addEventListener('change', () => apply());
+  ui.stripBeforeContact.addEventListener('change', () => apply()); // 🆕
   ui.maxLines.addEventListener('change', () => apply());
   ui.keywords.addEventListener('change', () => apply());
 }
 
-// ---- 加载设置 ----
 function loadSettings() {
   if (!extension_settings[MODULE_NAME]) {
     extension_settings[MODULE_NAME] = { ...defaultSettings };
@@ -226,6 +238,7 @@ function loadSettings() {
     enabled: document.getElementById('cotc-enabled'),
     hideMode: document.getElementById('cotc-hide-mode'),
     stripMode: document.getElementById('cotc-strip-mode'),
+    stripBeforeContact: document.getElementById('cotc-strip-before-contact'), // 🆕
     maxLines: document.getElementById('cotc-max-lines'),
     keywords: document.getElementById('cotc-keywords'),
   };
@@ -233,12 +246,12 @@ function loadSettings() {
     ui.enabled.checked = settings.enabled;
     ui.hideMode.checked = settings.hideMode;
     ui.stripMode.checked = settings.stripMode;
+    ui.stripBeforeContact.checked = settings.stripBeforeContact; // 🆕
     ui.maxLines.value = settings.maxLines;
     ui.keywords.value = settings.keywordsRaw;
   }
 }
 
-// ---- 挂载 ----
 jQuery(async () => {
   const settingsHtml = await $.get(`/scripts/extensions/third-party/${extensionName}/settings.html`);
   $('#extensions_settings2').append(settingsHtml);
